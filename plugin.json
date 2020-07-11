@@ -1,0 +1,15 @@
+{
+    "id": "com.github.jespino.stl-preview",
+    "name": "STL file previewer",
+    "description": "Allow to preview attachments on STL format.",
+    "version": "0.1.0",
+    "min_server_version": "5.20.0",
+    "webapp": {
+        "bundle_path": "webapp/dist/main.js"
+    },
+    "settings_schema": {
+        "header": "",
+        "footer": "",
+        "settings": []
+    }
+}
