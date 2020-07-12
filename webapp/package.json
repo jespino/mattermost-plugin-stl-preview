@@ -63,6 +63,7 @@
   "dependencies": {
     "core-js": "3.6.2",
     "react": "16.8.6",
+    "react-3d-viewer": "1.0.12",
     "react-redux": "5.0.7",
     "redux": "4.0.1",
     "stl-viewer": "0.12.0",
