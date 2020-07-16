@@ -8,6 +8,8 @@ import {getFileUrl} from 'mattermost-redux/utils/file_utils';
 import FileViewer from '@marcioferlan/react-file-viewer';
 import Emulator from 'jsnes-web/src/Emulator.js';
 import manifest from './manifest.js';
+import { saveAs } from 'file-saver';
+// import { Document, Page } from 'react-pdf/dist/entry'
 
 function loadBinary(path, callback) {
     var req = new XMLHttpRequest();
@@ -66,6 +68,10 @@ class MyEmulator extends React.Component {
     this.load();
   }
 
+  componentWillUnmount() {
+    this.load();
+  }
+
   render() {
     if (!this.state.romData) {
       return null;
@@ -77,21 +83,50 @@ class MyEmulator extends React.Component {
   }
 }
 
+// class MyPdfViewer extends React.Component {
+//     constructor(props) {       
+//         super(props);
+//         this.state = {
+//             numPages: null,
+//             page: 1,                 
+//         }                            
+//     }                                               
+//     onDocumentLoadSuccess = ({ numPages }) => {
+//         this.setState({numPages});                
+//     }                                 
+                            
+//     render() {        
+//       return (  
+//           <div style={{textAlign: 'center'}}>
+//               <Document file={this.props.url} onLoadSuccess={this.onDocumentLoadSuccess}>
+//                   <Page pageNumber={this.state.page}/>
+//               </Document>     
+//               {this.state.numPages && <p>Page {this.state.page} of {this.state.numPages}</p>}
+//               <p>
+//                   <button disabled={this.state.page === 1} onClick={() => this.setState({page: this.state.page-1})}>Prev</button>    
+//                   <button disabled={this.state.page === this.state.numPages} onClick={() => this.setState({page: this.state.page+1})}>Next</button>      
+//               </p>                                         
+//           </div>                              
+//       );                                      
+//     }                  
+// }
+                                                                                                                              
+
+
 class ZipViewer extends React.Component {
   constructor(props) {
     super(props);
 
     this.state = {
-      allPaths: []
+      allPaths: [],
+        zip: null,
     };
   }
 
     loadZip =  () => {
-      console.log("INITIALIZING LOAD ZIP");
       loadBinary(this.props.url, (err, data) => {
-        console.log("LOADED BINARY");
         new JSZip.loadAsync(data, {}).then(zip => {
-          console.log("New ZIP", zip);
+          this.setState({zip});
           const allPaths = [];
           zip.forEach((relativePath, file) => {
             allPaths.push(relativePath);
@@ -113,9 +148,18 @@ class ZipViewer extends React.Component {
       return false;
     }
 
+    download = item => {
+        console.log("DOWNLOADING?")
+        this.state.zip.file(item).async('string').then((content) => {
+            const splitted = item.split("/");
+            console.log("YES; IN THEORY", content, splitted[splitted.length-1])
+            saveAs(content, splitted[splitted.length-1])
+        });
+    }
+
     toggleCollapse = item => {
       this.setState({
-        item: !this.state.item
+        [item]: !this.state[item]
       });
     }
 
@@ -124,45 +168,52 @@ class ZipViewer extends React.Component {
         const splitted = item.split("/");
 
         if (this.isDir(item)) {
-          for (const key in Object.keys(this.state)) {
-            if (item.indexOf(key) === 0) {
+          for (const key of Object.keys(this.state)) {
+            if (item.indexOf(key) === 0 && this.state[key] === true && key !== item) {
               return null;
             }
           }
 
           const itemName = splitted[splitted.length - 2];
-          return React.createElement("li", {
-            style: {
-              listStyle: 'none',
-              marginLeft: (splitted.length - 2) * 10
-            },
-            onClick: this.toggleCollapse
-          }, React.createElement("i", {
-            class: "fa fa-folder",
-            "aria-hidden": "true"
-          }), " ", itemName);
+          return (
+              <li key={item} style={{position: 'relative', cursor: 'pointer', listStyle: 'none', marginLeft: (splitted.length - 2) * 20}} onClick={(e) => this.toggleCollapse(item)}>
+                {this.state[item] && <i style={{paddingRight: 5}} className="fa fa-chevron-right" aria-hidden={true}/>}
+                {!this.state[item] && <i style={{paddingRight: 5}} className="fa fa-chevron-down" aria-hidden={true}/>}
+                <i className="fa fa-folder" style={{paddingRight: 5, color: '#145dbf'}} aria-hidden={true}/> {itemName}
+              </li>
+          );
         } else {
-          for (const key in Object.keys(this.state)) {
-            if (item.indexOf(key) === 0) {
+          for (const key of Object.keys(this.state)) {
+            if (item.indexOf(key) === 0 && this.state[key] === true) {
               return null;
             }
           }
 
           const itemName = splitted[splitted.length - 1];
           return React.createElement("li", {
+            key: item,
+            onClick: (e) => this.download(item),
             style: {
+              cursor: 'pointer',
               listStyle: 'none',
-              marginLeft: (splitted.length - 1) * 10
+              paddingTop: 3,
+              paddingBottom: 3,
+              marginLeft: ((splitted.length - 1) * 20)
             }
           }, React.createElement("i", {
-            class: "fa fa-file",
+            className: "fa fa-file",
+            style: {
+              paddingRight: 5,
+              color: 'rgba(22,109,224,0.2)',
+            },
             "aria-hidden": "true"
           }), " ", itemName);
         }
       });
       return React.createElement("ul", {
         style: {
-          textAlign: 'left'
+          textAlign: 'left',
+          fontSize: 16,
         }
       }, itemsLis);
     }
@@ -173,7 +224,7 @@ class ZipViewer extends React.Component {
   }
 
   render() {
-    return <div>{this.renderList(this.state.allPaths)}</div>;
+    return <div style={{paddingTop: 10, paddingBottom: 10, maxWidth: 640, minWidth: 480, maxHeight: 640, minHeight: 480}}>{this.renderList(this.state.allPaths)}</div>;
   }
 
 } // class PdfViewer extends React.Component {
@@ -241,8 +292,16 @@ class AudioViewer extends React.Component {
 class JSONViewer extends React.Component {
   constructor() {
     super();
+    this.state = {
+      json: ''
+    };
+  }
 
-    _defineProperty(this, "loadJson", async url => {
+  componentDidMount() {
+    this.loadJson(this.props.url);
+  }
+
+  loadJson = async url => {
       const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json'
@@ -252,16 +311,7 @@ class JSONViewer extends React.Component {
       this.setState({
         json: data
       });
-    });
-
-    this.state = {
-      json: ''
     };
-  }
-
-  componentDidMount() {
-    this.loadJson(this.props.url);
-  }
 
   render() {
     return React.createElement("div", {
@@ -310,10 +360,11 @@ class Plugin {
     registry.registerFilePreviewComponent(fileInfo => fileInfo && fileInfo.extension && fileInfo.extension === 'json', props => React.createElement(JSONViewer, {
       url: props.fileInfo.link || getFileUrl(props.fileInfo.id)
     }));
-    registry.registerFilePreviewComponent(fileInfo => fileInfo && fileInfo.extension && fileInfo.extension === 'docx', props => React.createElement(FileViwer, {
-      fileType: "docx",
-      filePath: props.fileInfo.link || getFileUrl(props.fileInfo.id)
-    })); // registry.registerFilePreviewComponent(
+    registry.registerFilePreviewComponent(fileInfo => fileInfo && fileInfo.extension && fileInfo.extension === 'docx', props => (
+        <div style={{textAlign: 'left'}}>
+          <FileViewer fileType="docx" filePath={props.fileInfo.link || getFileUrl(props.fileInfo.id)}/>
+        </div>
+    )); // registry.registerFilePreviewComponent(
     //     (fileInfo) => fileInfo && fileInfo.extension && fileInfo.extension === 'docx',
     //     (props) => {
     //         console.log(props.fileInfo);
@@ -338,9 +389,7 @@ class Plugin {
     //     (fileInfo) => fileInfo && fileInfo.extension && fileInfo.extension === 'pdf',
     //     (props) => {
     //         return (
-    // <PdfViewer
-    //                 url={props.fileInfo.link || getFileUrl(props.fileInfo.id)}
-    //             />
+    //             <MyPdfViewer url={props.fileInfo.link || getFileUrl(props.fileInfo.id)}/>
     //         );
     //     }
     // );
