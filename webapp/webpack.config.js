@@ -36,6 +36,7 @@ if (NPM_TARGET === 'build:watch' || NPM_TARGET === 'debug:watch') {
 
 module.exports = {
     entry: [
+        "@babel/polyfill",
         './src/index.jsx',
     ],
     resolve: {
@@ -72,6 +73,15 @@ module.exports = {
                             includePaths: ['node_modules/compass-mixins/lib', 'sass'],
                         },
                     },
+                ],
+            },
+            {
+                test: /\.css$/,
+                use: [
+                    'style-loader',
+                    {
+                        loader: 'css-loader',
+                    }
                 ],
             },
         ],
